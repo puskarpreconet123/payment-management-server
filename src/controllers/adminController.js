@@ -219,12 +219,12 @@ exports.createMid = async (req, res) => {
       upi_id,
       merchant_name,
     } = req.body;
-    const {api_secret} = req.body.api_secret || "runs on api token(saved as api_key)"
-    const {webhook_secret} = req.body.webhook_secret || " "
+    const { api_secret } = req.body.api_secret || "runs on api token(saved as api_key)"
+    const { webhook_secret } = req.body.webhook_secret || " "
     const exists = await MID.findOne({
       mid_code: mid_code.toUpperCase(),
     });
-    
+
     if (exists)
       return errorResponse(res, 'MID code already exists', 409);
 
@@ -264,6 +264,108 @@ exports.getMids = async (req, res) => {
       .sort({ createdAt: -1 });
 
     return successResponse(res, mids);
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
+exports.getMidPerformance = async (req, res) => {
+  try {
+    const now = new Date();
+    const ranges = [
+      { key: '15m', date: new Date(now - 15 * 60 * 1000) },
+      { key: '1h', date: new Date(now - 1 * 60 * 60 * 1000) },
+      { key: '6h', date: new Date(now - 6 * 60 * 60 * 1000) }
+    ];
+
+    // 1. Get stats from payments for MIDs that have transactions
+    const statsAggregation = [
+      {
+        $match: {
+          createdAt: { $gte: ranges[2].date },
+        },
+      },
+      {
+        $group: {
+          _id: '$mid_id',
+          ...ranges.reduce((acc, range) => {
+            acc[`total_${range.key}`] = {
+              $sum: { $cond: [{ $gte: ['$createdAt', range.date] }, 1, 0] },
+            };
+            acc[`success_${range.key}`] = {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $gte: ['$createdAt', range.date] },
+                      { $eq: ['$status', 'SUCCESS'] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            };
+            return acc;
+          }, {}),
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          stats: ranges.reduce((acc, range) => {
+            acc[range.key] = {
+              total: `$total_${range.key}`,
+              success: `$success_${range.key}`,
+              success_rate: {
+                $cond: [
+                  { $gt: [`$total_${range.key}`, 0] },
+                  {
+                    $round: [
+                      {
+                        $multiply: [
+                          { $divide: [`$success_${range.key}`, `$total_${range.key}`] },
+                          100,
+                        ],
+                      },
+                      2,
+                    ],
+                  },
+                  0,
+                ],
+              },
+            };
+            return acc;
+          }, {}),
+        }
+      }
+    ];
+
+    const performanceStats = await Payment.aggregate(statsAggregation);
+    
+    // 2. Get all MIDs
+    const allMids = await MID.find().sort({ mid_code: 1 });
+
+    // 3. Merge stats with all MIDs
+    const statsMap = performanceStats.reduce((acc, curr) => {
+      acc[curr._id.toString()] = curr.stats;
+      return acc;
+    }, {});
+
+    const defaultStats = ranges.reduce((acc, range) => {
+      acc[range.key] = { total: 0, success: 0, success_rate: 0 };
+      return acc;
+    }, {});
+
+    const performance = allMids.map(mid => ({
+      _id: mid._id,
+      mid_code: mid.mid_code,
+      provider: mid.provider,
+      status: mid.status,
+      stats: statsMap[mid._id.toString()] || defaultStats
+    }));
+
+    return successResponse(res, performance, 'MID performance retrieved successfully');
   } catch (err) {
     return errorResponse(res, err.message);
   }

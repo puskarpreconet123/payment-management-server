@@ -11,12 +11,12 @@ const RETRY_SCHEDULE = [1, 5, 15];
  * Build the merchant webhook payload
  */
 const buildPayload = (payment) => ({
-  payment_id: payment.payment_id,
-  order_id: payment.order_id,
   status: payment.status,
   amount: payment.amount,
-  currency: payment.currency || 'INR',
+  payment_id: payment.payment_id,
+  order_id: payment.order_id,
   utr: payment.utr || null,
+  currency: payment.currency || 'INR',
   customer_name: payment.customer_name,
   timestamp: new Date().toISOString(),
 });
@@ -126,4 +126,28 @@ const processRetryQueue = async () => {
   }
 };
 
-module.exports = { sendWebhook, processRetryQueue, buildPayload };
+/**
+ * Send raw provider callback data to merchant
+ */
+const sendRawCallback = async (payment, rawData) => {
+  const merchant = await Merchant.findById(payment.merchant_id);
+  const webhookUrl = payment.webhook_url || merchant?.webhook_url;
+
+  if (!webhookUrl) return;
+
+  try {
+    await axios.post(webhookUrl, rawData, {
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-RupeeFlow-Event': 'raw.callback',
+        'X-RupeeFlow-PaymentId': payment.payment_id,
+      },
+    });
+    console.log(`✅ Raw callback delivered for ${payment.payment_id}`);
+  } catch (error) {
+    console.error(`❌ Raw callback failed for ${payment.payment_id}: ${error.message}`);
+  }
+};
+
+module.exports = { sendWebhook, sendRawCallback, processRetryQueue, buildPayload };

@@ -12,8 +12,8 @@ const midSchema = new mongoose.Schema(
     provider: {
       type: String,
       required: [true, 'Provider name is required'],
-      enum: ['razorpay', 'paytm', 'phonepe', 'rupeeflow', 'dummy'],
-      default: 'dummy',
+      enum: ['rupeeflow', 'cgpey'],
+      default: 'rupeeflow',
     },
     api_key: {
       type: String,

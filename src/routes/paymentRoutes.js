@@ -21,8 +21,7 @@ Merchant → Paynexa → RupeeFlow
 ────────────────────────────────────
 */
 
-router.post(
-  '/create',
+router.post('/create',
   [
     body('amount')
       .isFloat({ min: 1, max: 100000 })

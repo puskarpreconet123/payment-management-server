@@ -26,6 +26,7 @@ const transactionLogSchema = new mongoose.Schema(
         'WEBHOOK_RETRY',
         'WEBHOOK_FAILED',
         'STATUS_CHECK',
+        'CALLBACK_RECEIVED',
       ],
     },
     provider_event: {

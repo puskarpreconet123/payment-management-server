@@ -22,7 +22,7 @@ const createPayment = async (options) => {
             api_token: api_key,
             amount: amount,
             callback_url: process.env.SERVER_URL
-                ? `${process.env.SERVER_URL.replace(/\/$/, '')}/api/rupeeflow/callback`
+                ? `${process.env.SERVER_URL.replace(/\/$/, '')}/api/callback/rupeeflow`
                 : process.env.RUPEEFLOW_CALLBACK_URL,
             client_id: payment_id,
             customer_name: customer_name,

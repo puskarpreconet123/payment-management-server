@@ -52,6 +52,7 @@ router.post('/mids', [
 ], validate, adminController.createMid);
 
 router.get('/mids', adminController.getMids);
+router.get('/mids/performance', adminController.getMidPerformance);
 router.patch('/mids/:id/status', adminController.updateMidStatus);
 
 /*

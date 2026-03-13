@@ -69,7 +69,7 @@ const callBackRoutes = require("./routes/callbackRoutes")
 app.use('/api/admin', adminRoutes);
 app.use('/api/merchant', merchantRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/rupeeflow', callBackRoutes)
+app.use('/api/callback', callBackRoutes);
 // app.use('/api/add-money', enquiryRoutes);
 // app.use('/webhooks', webhookRoutes);
 
