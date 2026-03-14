@@ -69,6 +69,13 @@ router.get('/:payment_id', paymentController.getPaymentStatus);
 
 /*
 ────────────────────────────────────
+GET PAYMENT BY DATE AND ORDERID
+────────────────────────────────────
+*/
+router.post('/date-wise-payment', paymentController.getDateWisePaymentStatus)
+
+/*
+────────────────────────────────────
 CONFIRM PAYMENT
 (For manual verification if needed)
 ────────────────────────────────────
