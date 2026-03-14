@@ -48,6 +48,62 @@ exports.getPaymentStatus = async (req, res) => {
 };
 
 /**
+ * GET /api/payments/date-wise-payment
+ * List payments for the authenticated merchant
+ */
+exports.getDateWisePaymentStatus = async (req, res) => {
+  try {
+    const { order_id, date} = req.body;
+
+    if (!order_id && !date) {
+      return res.status(400).json({
+        success: false,
+        message: "Either 'order_id' or 'date' is required",
+      });
+    }
+
+    const filter = {
+      merchant_id: req.merchant._id,
+    };
+
+    if (order_id) {
+      filter.order_id = order_id;
+    } else {
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
+
+      filter.createdAt = { $gte: start, $lte: end };
+    }
+
+    const [payments, total] = await Promise.all([
+      Payment.find(filter)
+        .select('payment_id order_id amount currency status createdAt updatedAt -_id')
+        .sort({ createdAt: -1 }),
+      Payment.countDocuments(filter),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Success",
+      data: {
+        total,
+        payments,
+      },
+    });
+
+  } catch (error) {
+    console.error('getDateWisePaymentStatus error:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+/**
  * GET /api/payments
  * List payments for the authenticated merchant
  */
