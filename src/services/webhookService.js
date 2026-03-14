@@ -134,9 +134,9 @@ const sendRawCallback = async (payment, rawData) => {
   const webhookUrl = payment.webhook_url || merchant?.webhook_url;
 
   if (!webhookUrl) return;
-
+  data = buildPayload(payment)
   try {
-    await axios.post(webhookUrl, rawData, {
+    await axios.post(webhookUrl, data, {
       timeout: 10000,
       headers: {
         'Content-Type': 'application/json',
