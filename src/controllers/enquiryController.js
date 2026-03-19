@@ -6,11 +6,11 @@ const Payment = require('../models/Payment');
  */
 exports.trxnStatusEnquiry = async (req, res) => {
     try {
-        const { client_id, txn_date } = req.body;
+        const { payment_id, txn_date } = req.body;
 
         // 1. Basic validation
-        if (!client_id) {
-            return res.status(422).json({ status: 'failure', message: 'client_id is required' });
+        if (!payment_id) {
+            return res.status(422).json({ status: 'failure', message: 'payment_id is required' });
         }
 
         if (!txn_date) {
@@ -27,7 +27,7 @@ exports.trxnStatusEnquiry = async (req, res) => {
         }
 
         // 3. Find payment
-        // We match order_id with client_id
+        // We match payment_id
         const startOfDay = new Date(txn_date);
         startOfDay.setHours(0, 0, 0, 0);
 
@@ -36,7 +36,7 @@ exports.trxnStatusEnquiry = async (req, res) => {
 
         const payment = await Payment.findOne({
             merchant_id: req.merchant._id,
-            order_id: client_id,
+            payment_id,
             createdAt: { $gte: startOfDay, $lte: endOfDay }
         });
 

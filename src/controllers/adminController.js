@@ -219,8 +219,7 @@ exports.createMid = async (req, res) => {
       upi_id,
       merchant_name,
     } = req.body;
-    const { api_secret } = req.body.api_secret || "runs on api token(saved as api_key)"
-    const { webhook_secret } = req.body.webhook_secret || " "
+    const { api_secret, webhook_secret } = req.body;
     const exists = await MID.findOne({
       mid_code: mid_code.toUpperCase(),
     });
@@ -259,11 +258,23 @@ exports.createMid = async (req, res) => {
 
 exports.getMids = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
     const mids = await MID.find()
       .select('-api_key -api_secret -webhook_secret')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-    return successResponse(res, mids);
+    const total = await MID.countDocuments();
+
+    return successResponse(res, {
+      mids,
+      total,
+      page,
+      limit,
+    });
   } catch (err) {
     return errorResponse(res, err.message);
   }
@@ -271,6 +282,9 @@ exports.getMids = async (req, res) => {
 
 exports.getMidPerformance = async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
     const now = new Date();
     const ranges = [
       { key: '15m', date: new Date(now - 15 * 60 * 1000) },
@@ -343,12 +357,16 @@ exports.getMidPerformance = async (req, res) => {
 
     const performanceStats = await Payment.aggregate(statsAggregation);
     
-    // 2. Get all MIDs
-    const allMids = await MID.find().sort({ mid_code: 1 });
+    // 2. Get total and paginated MIDs
+    const total = await MID.countDocuments();
+    const allMids = await MID.find()
+      .sort({ mid_code: 1 })
+      .skip((page - 1) * limit)
+      .limit(limit);
 
-    // 3. Merge stats with all MIDs
+    // 3. Merge stats with paginated MIDs
     const statsMap = performanceStats.reduce((acc, curr) => {
-      acc[curr._id.toString()] = curr.stats;
+      if (curr._id) acc[curr._id.toString()] = curr.stats;
       return acc;
     }, {});
 
@@ -357,7 +375,7 @@ exports.getMidPerformance = async (req, res) => {
       return acc;
     }, {});
 
-    const performance = allMids.map(mid => ({
+    const mids = allMids.map(mid => ({
       _id: mid._id,
       mid_code: mid.mid_code,
       provider: mid.provider,
@@ -365,7 +383,12 @@ exports.getMidPerformance = async (req, res) => {
       stats: statsMap[mid._id.toString()] || defaultStats
     }));
 
-    return successResponse(res, performance, 'MID performance retrieved successfully');
+    return successResponse(res, {
+      mids,
+      total,
+      page,
+      limit
+    }, 'MID performance retrieved successfully');
   } catch (err) {
     return errorResponse(res, err.message);
   }
@@ -422,10 +445,17 @@ exports.getAllTransactions = async (req, res) => {
       .limit(limit);
 
     const total = await Payment.countDocuments(filter);
-
     const successCount = await Payment.countDocuments({
       ...filter,
       status: 'SUCCESS',
+    });
+    const failedCount = await Payment.countDocuments({
+      ...filter,
+      status: 'FAILED',
+    });
+    const pendingCount = await Payment.countDocuments({
+      ...filter,
+      status: { $in: ['PENDING', 'CREATED'] },
     });
 
     const successRate =
@@ -434,6 +464,9 @@ exports.getAllTransactions = async (req, res) => {
     return successResponse(res, {
       payments,
       total,
+      success_count: successCount,
+      failed_count: failedCount,
+      pending_count: pendingCount,
       page,
       limit,
       success_rate: `${successRate}%`,

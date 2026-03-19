@@ -197,12 +197,31 @@ exports.getTransactions = async (req, res) => {
       .lean();
 
     const total = await Payment.countDocuments(filter);
+    const successCount = await Payment.countDocuments({
+      ...filter,
+      status: 'SUCCESS',
+    });
+    const failedCount = await Payment.countDocuments({
+      ...filter,
+      status: 'FAILED',
+    });
+    const pendingCount = await Payment.countDocuments({
+      ...filter,
+      status: { $in: ['PENDING', 'CREATED'] },
+    });
+
+    const successRate =
+      total > 0 ? ((successCount / total) * 100).toFixed(2) : 0;
 
     return successResponse(res, {
       payments,
       total,
+      success_count: successCount,
+      failed_count: failedCount,
+      pending_count: pendingCount,
       page,
       limit,
+      success_rate: `${successRate}%`,
     });
 
   } catch (err) {

@@ -44,7 +44,7 @@ MID MANAGEMENT
 router.post('/mids', [
   body('mid_code').trim().notEmpty().withMessage('MID code is required'),
   body('provider')
-    .isIn(['rupeeflow', 'razorpay', 'paytm', 'phonepe', 'dummy'])
+    .isIn(['rupeeflow', 'razorpay', 'paytm', 'phonepe', 'cgpey', 'dummy'])
     .withMessage('Invalid provider'),
   body('api_key').notEmpty().withMessage('API key is required'),
   body('api_secret').optional(),
