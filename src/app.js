@@ -60,7 +60,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const callBackRoutes = require("./routes/callbackRoutes")
 
 // RupeeFlow webhook routes
-// const webhookRoutes = require('./routes/webhookRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 // Status enquiry
 // const enquiryRoutes = require('./routes/enquiryRoutes');
@@ -71,7 +71,7 @@ app.use('/api/merchant', merchantRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/callback', callBackRoutes);
 // app.use('/api/add-money', enquiryRoutes);
-// app.use('/webhooks', webhookRoutes);
+app.use('/webhooks', webhookRoutes);
 
 /*
 Future Providers (Disabled for now)
