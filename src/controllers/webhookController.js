@@ -91,15 +91,22 @@ const OtpSession = require('../models/OtpSession');
 
 exports.reverseOtpWebhook = async (req, res) => {
   try {
-    const rawBody = req.body;
+    const rawBody = req.body || {};
     console.log('ReverseOTP Webhook:', rawBody);
 
-    // According to docs, they might send `status` and `otp_session_id` or `id`
-    const sessionId = rawBody.otp_session_id || rawBody.request_id || rawBody.id;
-    const incomingStatus = rawBody.status || 'verified'; 
-    // They might send status as 'verified' or 'success'.
+    const payload = (rawBody && rawBody.data) ? rawBody.data : rawBody;
+    
+    // Extract ID (based on actual user payload or documented fallbacks)
+    const sessionId = payload.otpSessionId || payload.otp_session_id || payload.request_id || payload.id;
+    
+    // Fallbacks for status
+    let incomingStatus = payload.status || 'pending';
+    if (payload.verifiedAt) {
+      incomingStatus = 'verified';
+    }
 
     if (!sessionId) {
+       console.error("Session ID not found in payload:", rawBody);
        return res.status(400).json({ status: 'error', message: 'Session ID not found in payload' });
     }
 
@@ -109,7 +116,9 @@ exports.reverseOtpWebhook = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Session not found' });
     }
 
-    if (incomingStatus === 'success' || incomingStatus === 'verified') {
+    const rawStatus = String(incomingStatus).toLowerCase();
+    
+    if (rawStatus === 'success' || rawStatus === 'verified') {
       session.status = 'verified';
     } else {
       session.status = 'failed';
