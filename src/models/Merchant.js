@@ -15,6 +15,11 @@ const merchantSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    mobile_no: {
+      type: String,
+      required: [true, 'Mobile number is required'],
+      trim: true,
+    },
     password: {
       type: String,
       required: [true, 'Password is required'],

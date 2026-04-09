@@ -1,9 +1,11 @@
 const rupeeFlowProvider = require('./rupeeFlowProvider');
 const cgpeyProvider = require('./cgpeyProvider');
+const reverseOtpProvider = require('./reverseOtpProvider');
 
 const PROVIDERS = {
   rupeeflow: rupeeFlowProvider,
   cgpey: cgpeyProvider,
+  reverseotp: reverseOtpProvider,
 };
 
 /**

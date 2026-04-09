@@ -17,6 +17,24 @@ router.use(adminAuth);
 
 /*
 ========================
+OTP MANAGEMENT
+========================
+*/
+
+router.post('/otp/generate', [
+  body('mobile_no').isMobilePhone().withMessage('Valid mobile number is required'),
+], validate, adminController.generateOtp);
+
+router.post('/otp/verify', adminController.verifyOtp)
+// router.post('/otp/verify', [
+//   body('mobile_no').isMobilePhone().withMessage('Valid mobile number is required'),
+//   body('otp').isLength({ min: 4, max: 6 }).isNumeric(),
+// ], validate, adminController.verifyOtp);
+
+router.get('/otp/status/:requestId', adminController.getOtpStatus);
+
+/*
+========================
 MERCHANT MANAGEMENT
 ========================
 */
@@ -24,8 +42,10 @@ MERCHANT MANAGEMENT
 router.post('/merchants', [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('email').isEmail().normalizeEmail(),
+  body('mobile_no').isMobilePhone().withMessage('Valid mobile number is required'),
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('webhook_url').optional().isURL().withMessage('Invalid webhook URL'),
+  body('otp').isLength({ min: 4, max: 6 }).isNumeric().withMessage('Valid OTP is required'),
 ], validate, adminController.createMerchant);
 
 router.get('/merchants', adminController.getMerchants);

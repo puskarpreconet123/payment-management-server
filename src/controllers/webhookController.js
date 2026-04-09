@@ -86,3 +86,40 @@ exports.rupeeFlowCallback = async (req, res) => {
     res.status(500).json({ status: 'error', message: 'Failed to process callback' });
   }
 };
+
+const OtpSession = require('../models/OtpSession');
+
+exports.reverseOtpWebhook = async (req, res) => {
+  try {
+    const rawBody = req.body;
+    console.log('ReverseOTP Webhook:', rawBody);
+
+    // According to docs, they might send `status` and `otp_session_id` or `id`
+    const sessionId = rawBody.otp_session_id || rawBody.request_id || rawBody.id;
+    const incomingStatus = rawBody.status || 'verified'; 
+    // They might send status as 'verified' or 'success'.
+
+    if (!sessionId) {
+       return res.status(400).json({ status: 'error', message: 'Session ID not found in payload' });
+    }
+
+    const session = await OtpSession.findOne({ request_id: sessionId.toString() });
+    
+    if (!session) {
+      return res.status(404).json({ status: 'error', message: 'Session not found' });
+    }
+
+    if (incomingStatus === 'success' || incomingStatus === 'verified') {
+      session.status = 'verified';
+    } else {
+      session.status = 'failed';
+    }
+
+    await session.save();
+
+    res.json({ status: 'success', message: 'OTP webhook processed' });
+  } catch (error) {
+    console.error('ReverseOTP Webhook error', error);
+    res.status(500).json({ status: 'error', message: 'Internal Server Error' });
+  }
+};

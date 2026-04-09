@@ -3,10 +3,12 @@ const Merchant = require('../models/Merchant');
 const MID = require('../models/MID');
 const Payment = require('../models/Payment');
 const WebhookLog = require('../models/WebhookLog');
+const OtpSession = require('../models/OtpSession');
 
 const { generateJWT } = require('../utils/generateToken');
 const { successResponse, errorResponse } = require('../utils/response');
 const { validationResult } = require('express-validator');
+const { getProvider } = require('../providers');
 
 /*
 ==================================
@@ -57,6 +59,88 @@ exports.login = async (req, res) => {
 
 /*
 ==================================
+OTP MANAGEMENT
+==================================
+*/
+
+exports.generateOtp = async (req, res) => {
+  try {
+    const { mobile_no } = req.body;
+
+    if (!mobile_no) {
+      return errorResponse(res, 'Mobile number is required', 400);
+    }
+
+    const otpProvider = getProvider('reverseotp');
+    const result = await otpProvider.generateOtp(mobile_no);
+
+    if (!result.success) {
+      return errorResponse(res, result.error, 500);
+    }
+
+    // Save the pending session to DB for webhook updates and frontend polling
+    await OtpSession.create({
+      request_id: result.requestId.toString(),
+      mobile_no: mobile_no,
+      status: 'pending'
+    });
+
+    return successResponse(res, { 
+      requestId: result.requestId,
+      intent: result.intent,
+      qr: result.qr 
+    }, 'OTP sent successfully');
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
+exports.verifyOtp = async (req, res) => {
+  try {
+    const { mobile_no, otp } = req.body;
+
+    if (!mobile_no || !otp) {
+      return errorResponse(res, 'Mobile number and OTP are required', 400);
+    }
+
+    const otpProvider = getProvider('reverseotp');
+    const result = await otpProvider.verifyOtp(mobile_no, otp);
+
+    if (!result.success) {
+      return errorResponse(res, result.error || 'Invalid OTP', 400);
+    }
+
+    return successResponse(res, {}, 'OTP verified successfully');
+  } catch (err) {
+    console.log(err.message)
+    return errorResponse(res, err.message);
+  }
+};
+
+exports.getOtpStatus = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    
+    if (!requestId) {
+       return errorResponse(res, 'Request ID is required', 400);
+    }
+    
+    const session = await OtpSession.findOne({ request_id: requestId.toString() });
+    
+    if (!session) {
+       return errorResponse(res, 'OTP session not found', 404);
+    }
+    
+    return successResponse(res, {
+       status: session.status // 'pending', 'verified', 'failed'
+    }, 'Status retrieved');
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
+/*
+==================================
 MERCHANT MANAGEMENT
 ==================================
 */
@@ -67,7 +151,15 @@ exports.createMerchant = async (req, res) => {
     if (!errors.isEmpty())
       return errorResponse(res, 'Validation failed', 422, errors.array());
 
-    const { name, email, password, webhook_url } = req.body;
+    const { name, email, mobile_no, password, webhook_url, otp } = req.body;
+
+    // First verify OTP
+    const otpProvider = getProvider('reverseotp');
+    const otpResult = await otpProvider.verifyOtp(mobile_no, otp);
+
+    if (!otpResult.success) {
+      return errorResponse(res, otpResult.error || 'Invalid OTP', 400);
+    }
 
     const exists = await Merchant.findOne({ email });
 
@@ -77,6 +169,7 @@ exports.createMerchant = async (req, res) => {
     const merchant = new Merchant({
       name,
       email,
+      mobile_no,
       password,
       webhook_url,
       created_by: req.admin._id,
@@ -92,6 +185,7 @@ exports.createMerchant = async (req, res) => {
         id: merchant._id,
         name: merchant.name,
         email: merchant.email,
+        mobile_no: merchant.mobile_no,
         api_token: merchant.api_token,
         webhook_url: merchant.webhook_url,
         status: merchant.status,
