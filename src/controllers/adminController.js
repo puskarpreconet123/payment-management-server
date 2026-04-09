@@ -65,14 +65,14 @@ OTP MANAGEMENT
 
 exports.generateOtp = async (req, res) => {
   try {
-    const { mobile_no } = req.body;
+    const { mobile_no, name } = req.body;
 
     if (!mobile_no) {
       return errorResponse(res, 'Mobile number is required', 400);
     }
 
     const otpProvider = getProvider('reverseotp');
-    const result = await otpProvider.generateOtp(mobile_no);
+    const result = await otpProvider.generateOtp(mobile_no, name);
 
     if (!result.success) {
       return errorResponse(res, result.error, 500);

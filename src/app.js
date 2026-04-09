@@ -71,7 +71,7 @@ app.use('/api/merchant', merchantRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/callback', callBackRoutes);
 // app.use('/api/add-money', enquiryRoutes);
-// app.use('/webhooks', webhookRoutes);
+app.use('/webhooks', webhookRoutes);
 
 /*
 Future Providers (Disabled for now)

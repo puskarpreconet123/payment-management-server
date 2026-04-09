@@ -14,7 +14,7 @@ class ReverseOtpProvider {
     });
   }
 
-  async generateOtp(mobileNo) {
+  async generateOtp(mobileNo, name) {
     try {
       // Clean mobile number and extract country code if present (e.g. +91)
       let cleanMobile = mobileNo.replace(/\D/g, '');
@@ -29,7 +29,7 @@ class ReverseOtpProvider {
         country_code: countryCode,
         api_key: this.apiKey,
         secret: this.apiSecret,
-        user_name: "John"
+        user_name: name || "Merchant"
       });
       console.log("reverseotp:",response.data)
       // Handle variations where data might not be nested in 'data' object
