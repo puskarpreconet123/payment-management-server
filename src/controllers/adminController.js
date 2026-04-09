@@ -151,15 +151,7 @@ exports.createMerchant = async (req, res) => {
     if (!errors.isEmpty())
       return errorResponse(res, 'Validation failed', 422, errors.array());
 
-    const { name, email, mobile_no, password, webhook_url, otp } = req.body;
-
-    // First verify OTP
-    const otpProvider = getProvider('reverseotp');
-    const otpResult = await otpProvider.verifyOtp(mobile_no, otp);
-
-    if (!otpResult.success) {
-      return errorResponse(res, otpResult.error || 'Invalid OTP', 400);
-    }
+    const { name, email, password, webhook_url } = req.body;
 
     const exists = await Merchant.findOne({ email });
 
@@ -169,7 +161,6 @@ exports.createMerchant = async (req, res) => {
     const merchant = new Merchant({
       name,
       email,
-      mobile_no,
       password,
       webhook_url,
       created_by: req.admin._id,
@@ -185,15 +176,16 @@ exports.createMerchant = async (req, res) => {
         id: merchant._id,
         name: merchant.name,
         email: merchant.email,
-        mobile_no: merchant.mobile_no,
         api_token: merchant.api_token,
         webhook_url: merchant.webhook_url,
         status: merchant.status,
+        is_mobile_verified: merchant.is_mobile_verified,
       },
       'Merchant created successfully',
       201
     );
   } catch (err) {
+    console.log(err);
     return errorResponse(res, err.message);
   }
 };

@@ -43,6 +43,8 @@ exports.login = async (req, res) => {
         name: merchant.name,
         email: merchant.email,
         api_token: merchant.api_token,
+        is_mobile_verified: merchant.is_mobile_verified,
+        mobile_no: merchant.mobile_no,
       },
     }, 'Login successful');
 
@@ -250,5 +252,89 @@ exports.getTransaction = async (req, res) => {
   } catch (err) {
     console.error(err);
     return errorResponse(res, 'Failed to fetch transaction');
+  }
+};
+
+const OtpSession = require('../models/OtpSession');
+const { getProvider } = require('../providers');
+
+exports.generateOnboardingOtp = async (req, res) => {
+  try {
+    const { mobile_no } = req.body;
+    const name = req.merchant.name;
+
+    if (!mobile_no) {
+      return errorResponse(res, 'Mobile number is required', 400);
+    }
+
+    const otpProvider = getProvider('reverseotp');
+    const result = await otpProvider.generateOtp(mobile_no, name);
+
+    if (!result.success) {
+      return errorResponse(res, result.error, 500);
+    }
+
+    // Save the pending session to DB for webhook updates and frontend polling
+    await OtpSession.create({
+      request_id: result.requestId.toString(),
+      mobile_no: mobile_no,
+      status: 'pending'
+    });
+
+    return successResponse(res, { 
+      requestId: result.requestId,
+      intent: result.intent,
+      qr: result.qr 
+    }, 'Verification session created');
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
+exports.verifyAndLinkMobile = async (req, res) => {
+  try {
+    const { requestId, mobile_no } = req.body;
+    
+    if (!requestId || !mobile_no) {
+       return errorResponse(res, 'Request ID and mobile number are required', 400);
+    }
+    
+    const session = await OtpSession.findOne({ request_id: requestId.toString() });
+    
+    if (!session) {
+       return errorResponse(res, 'Verification session not found', 404);
+    }
+
+    if (session.status !== 'verified') {
+       return errorResponse(res, 'Mobile number not yet verified by provider', 400);
+    }
+
+    // Link mobile to merchant
+    const merchant = await Merchant.findById(req.merchant._id);
+    merchant.mobile_no = mobile_no;
+    merchant.is_mobile_verified = true;
+    await merchant.save();
+
+    return successResponse(res, {
+       mobile_no: merchant.mobile_no,
+       is_mobile_verified: true
+    }, 'Mobile number verified and linked successfully');
+  } catch (err) {
+    return errorResponse(res, err.message);
+  }
+};
+
+exports.getOnboardingStatus = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const session = await OtpSession.findOne({ request_id: requestId.toString() });
+    
+    if (!session) {
+       return errorResponse(res, 'Session not found', 404);
+    }
+    
+    return successResponse(res, { status: session.status }, 'Status retrieved');
+  } catch (err) {
+    return errorResponse(res, err.message);
   }
 };

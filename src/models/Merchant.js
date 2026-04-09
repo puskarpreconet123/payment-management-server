@@ -17,8 +17,11 @@ const merchantSchema = new mongoose.Schema(
     },
     mobile_no: {
       type: String,
-      required: [true, 'Mobile number is required'],
       trim: true,
+    },
+    is_mobile_verified: {
+      type: Boolean,
+      default: false,
     },
     password: {
       type: String,

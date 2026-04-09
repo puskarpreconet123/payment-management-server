@@ -85,4 +85,9 @@ router.get('/transactions', merchantController.getTransactions);
 // Single transaction
 router.get('/transactions/:payment_id', merchantController.getTransaction);
 
+// Onboarding / Mobile Verification
+router.post('/onboarding/otp/generate', merchantController.generateOnboardingOtp);
+router.post('/onboarding/otp/verify', merchantController.verifyAndLinkMobile);
+router.get('/onboarding/otp/status/:requestId', merchantController.getOnboardingStatus);
+
 module.exports = router;
