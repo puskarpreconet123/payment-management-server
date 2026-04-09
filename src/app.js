@@ -60,7 +60,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const callBackRoutes = require("./routes/callbackRoutes")
 
 // RupeeFlow webhook routes
-// const webhookRoutes = require('./routes/webhookRoutes');
+const webhookRoutes = require('./routes/webhookRoutes');
 
 // Status enquiry
 // const enquiryRoutes = require('./routes/enquiryRoutes');
